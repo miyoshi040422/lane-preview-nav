@@ -268,7 +268,13 @@ async function fetchLaneInfo(lat, lon) {
       });
 
       const data = await res.json();
-      console.log("🤖 深層学習診断:", data);
+       // 🔥 ターミナルに危険度の詳細スコアを表示
+    console.log("===== 🚨 AI 危険度診断結果 =====");
+    console.log("平均スコア (avg_score):", data.avg_score);
+    console.log("レベル (level):", data.level);
+    console.log("全ポイント危険度スコア (predictions):", data.predictions);
+    console.log("================================");
+
       return data;
     } catch (err) {
       console.error("AI診断エラー:", err);
@@ -371,6 +377,20 @@ async function fetchLaneInfo(lat, lon) {
         {/* 📍 目的地マーカー */}
         {destination && <Marker coordinate={destination} pinColor="blue" />}
 
+        {/* 🔴 店舗検索結果の候補ピン */}
+{places.length > 0 &&
+  places.map((p) => (
+    <Marker
+      key={`place-${p.id}`}
+      coordinate={{ latitude: p.lat, longitude: p.lon }}
+      pinColor="red"              // ← 赤いピンにする
+      title={p.name.split(",")[0]}
+      description="検索候補"
+      onPress={() => confirmDestination(p.lat, p.lon, p.name)}
+    />
+  ))}
+
+
         {/* 🔮 AIスコアによるルート色分け */}
         {routeCoords.length > 1 &&
           aiResult?.details?.length === routeCoords.length &&
@@ -396,15 +416,31 @@ async function fetchLaneInfo(lat, lon) {
           })}
 
         {/* ⚙️ 各交差点にマーカーを表示 */}
-        {intersectionData.map((item, idx) => (
-          <Marker
-            key={`ix-${idx}`}
-            coordinate={item.point}
-            pinColor="purple"
-            title={`交差点 ${idx + 1}`}
-            description={`車線: ${item.lanes} | レーン: ${item.turn}`}
-          />
-        ))}
+        {intersectionData.map((item, idx) => {
+  const score = aiResult?.predictions?.[idx] ?? aiResult?.avg_score ?? 0.5;
+
+  let markerColor = "white";
+  if (score > 0.7) markerColor = "green";
+  else if (score > 0.4) markerColor = "orange";
+  else markerColor = "red";
+
+  return (
+    <Marker key={`ix-${idx}`} coordinate={item.point}>
+      <View
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: 9,
+          backgroundColor: markerColor,
+          borderWidth: 2,
+          borderColor: "white",
+        }}
+      />
+    </Marker>
+  );
+})}
+
+
       </MapView>
 
       {/* 🧠 AI診断結果ボックス */}
